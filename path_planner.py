@@ -151,21 +151,21 @@ def path_planning(position, orientation ,max_speed = 0.1, max_accel = 0.1):
 		}
 
 
-		limb = Limb()
+	limb = Limb()
 
-		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=max_speed,
-										max_joint_accel=max_accel)
-		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
+	wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=max_speed,
+									max_joint_accel=max_accel)
+	waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
 
-		joint = ik_service_client(poses).values()[::-1]		# joint angles from J0 to J6
+	joint = ik_service_client(poses).values()[::-1]		# joint angles from J0 to J6
 
-		if len(joint) != 7:
-			rospy.logerr('The number of joint_angles must be 7')
-			return None
+	if len(joint) != 7:
+		rospy.logerr('The number of joint_angles must be 7')
+		return None
 
-		waypoint.set_joint_angles(joint_angles = joint)
+	waypoint.set_joint_angles(joint_angles = joint)
 
-		return waypoint
+	return waypoint
 
 
 
@@ -184,7 +184,7 @@ def main():
 	parser.add_argument(
         "-o", "--orientation", type=float,
         nargs='+',
-        default=[0.704020578925, 0.710172716916, 0.00244101361829, 0.00194372088834]
+        default=[0.704020578925, 0.710172716916, 0.00244101361829, 0.00194372088834],
 		help="Orientation as a quaternion (x, y, z, w)")
 	#####
 	parser.add_argument(
@@ -252,26 +252,6 @@ def main():
 	try:
 		rospy.init_node('path_planner_py')
 
-		poses = {
-			'right': PoseStamped(
-				header=Header(stamp=rospy.Time.now(), frame_id='base'),
-				pose=Pose(
-					position=Point(
-						x=args.position[0],
-						y=args.position[1],
-						z=args.position[2],
-					),
-					orientation=Quaternion(
-						x=0.704020578925,
-						y=0.710172716916,
-						z=0.00244101361829,
-						w=0.00194372088834,
-					),
-				),
-			),
-		}
-
-
 		limb = Limb()
 		traj = MotionTrajectory(limb = limb)
 
@@ -284,14 +264,31 @@ def main():
 		traj.append_waypoint(waypoint.to_msg())
 
 
-		joint = ik_service_client(poses).values()[::-1]		# joint angles from J0 to J6
+		# joint = ik_service_client(poses).values()[::-1]		# joint angles from J0 to J6
 
-		if len(joint_angles) != len(joint_angles):
-			rospy.logerr('The number of joint_angles must be %d', len(joint_angles))
-			return None
+		# if len(joint_angles) != len(joint_angles):
+		# 	rospy.logerr('The number of joint_angles must be %d', len(joint_angles))
+		# 	return None
 
-		# waypoint.set_joint_angles(joint_angles = args.joint_angles)
-		waypoint.set_joint_angles(joint_angles = joint)
+		# # waypoint.set_joint_angles(joint_angles = args.joint_angles)
+		# waypoint.set_joint_angles(joint_angles = joint)
+
+		#####divide the whole path into three parts: soft begin, uniform motion, soft stop####
+		final_pos = args.position
+
+		# get endpoint state
+		endpoint_state = limb.tip_state('right_hand')
+		current_pos = endpoint_state.pose.position 
+		dis = [final_pos[0]-current_pos.x, final_pos[1]-current_pos.y, final_pos[2]-current_pos.z]
+		uniform_motion = [current_pos.x + dis[0]/3, current_pos.y + dis[1]/3, current_pos.z + dis[2]/3]
+		soft_stop = [current_pos.x + 2*dis[0]/3, current_pos.y + 2*dis[1]/3, current_pos.z + 2*dis[2]/3]
+		
+		#######################################################################################
+		waypoint = path_planning(uniform_motion, args.orientation, 0.1, 0.1)
+		traj.append_waypoint(waypoint.to_msg())
+		waypoint = path_planning(soft_stop, args.orientation, 0.2, 0)
+		traj.append_waypoint(waypoint.to_msg())
+		waypoint = path_planning(final_pos, args.orientation, 0.1, 0.1)
 		traj.append_waypoint(waypoint.to_msg())
 
 		# set the interaction control options in the current configuration

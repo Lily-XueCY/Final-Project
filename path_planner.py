@@ -1,18 +1,20 @@
 import rospy
 import argparse
 
+from math import floor
+
 from geometry_msgs.msg import (
-    PoseStamped,
-    Pose,
-    Point,
-    Quaternion,
+	PoseStamped,
+	Pose,
+	Point,
+	Quaternion,
 )
 from std_msgs.msg import Header
 from sensor_msgs.msg import JointState
 
 from intera_core_msgs.srv import (
-    SolvePositionIK,
-    SolvePositionIKRequest,
+	SolvePositionIK,
+	SolvePositionIKRequest,
 )
 
 from intera_motion_interface import (
@@ -33,56 +35,11 @@ def ik_service_client(poses, limb = "right", use_advanced_options = False):
 	ns = "ExternalTools/" + limb + "/PositionKinematicsNode/IKService"
 	iksvc = rospy.ServiceProxy(ns, SolvePositionIK)
 	ikreq = SolvePositionIKRequest()
-	hdr = Header(stamp=rospy.Time.now(), frame_id='base')
-	# poses = {
-	#     'right': PoseStamped(
-	#         header=hdr,
-	#         pose=Pose(
-	#             position=Point(
-	#                 x=0.450628752997,
-	#                 y=0.161615832271,
-	#                 z=0.217447307078,
-	#             ),
-	#             orientation=Quaternion(
-	#                 x=0.704020578925,
-	#                 y=0.710172716916,
-	#                 z=0.00244101361829,
-	#                 w=0.00194372088834,
-	#             ),
-	#         ),
-	#     ),
-	# }
+
 	# Add desired pose for inverse kinematics
 	ikreq.pose_stamp.append(poses[limb])
 	# Request inverse kinematics from base to "right_hand" link
 	ikreq.tip_names.append('right_hand')
-
-	if (use_advanced_options):
-		# Optional Advanced IK parameters
-		rospy.loginfo("Running Advanced IK Service Client example.")
-		# The joint seed is where the IK position solver starts its optimization
-		ikreq.seed_mode = ikreq.SEED_USER
-		seed = JointState()
-		seed.name = ['right_j0', 'right_j1', 'right_j2', 'right_j3',
-					 'right_j4', 'right_j5', 'right_j6']
-		seed.position = [0.7, 0.4, -1.7, 1.4, -1.1, -1.6, -0.4]
-		ikreq.seed_angles.append(seed)
-
-		# Once the primary IK task is solved, the solver will then try to bias the
-		# the joint angles toward the goal joint configuration. The null space is 
-		# the extra degrees of freedom the joints can move without affecting the
-		# primary IK task.
-		ikreq.use_nullspace_goal.append(True)
-		# The nullspace goal can either be the full set or subset of joint angles
-		goal = JointState()
-		goal.name = ['right_j1', 'right_j2', 'right_j3']
-		goal.position = [0.1, -0.3, 0.5]
-		ikreq.nullspace_goal.append(goal)
-		# The gain used to bias toward the nullspace goal. Must be [0.0, 1.0]
-		# If empty, the default gain of 0.4 will be used
-		ikreq.nullspace_gain.append(0.4)
-	else:
-		rospy.loginfo("Running Simple IK Service Client example.")
 
 	try:
 		rospy.wait_for_service(ns, 5.0)
@@ -166,6 +123,7 @@ def path_planning(position, orientation ,max_speed = 0.1, max_accel = 0.1):
 	waypoint.set_joint_angles(joint_angles = joint)
 
 	return waypoint
+	# return joint
 
 
 
@@ -182,9 +140,9 @@ def main():
 		nargs='+', default=[0, 0, 0],
 		help="Desired end position: X, Y, Z")
 	parser.add_argument(
-        "-o", "--orientation", type=float,
-        nargs='+',
-        default=[0.704020578925, 0.710172716916, 0.00244101361829, 0.00194372088834],
+		"-o", "--orientation", type=float,
+		nargs='+',
+		default=[0.704020578925, 0.710172716916, 0.00244101361829, 0.00194372088834],
 		help="Orientation as a quaternion (x, y, z, w)")
 	#####
 	parser.add_argument(
@@ -192,10 +150,10 @@ def main():
 		nargs='+', default=[0.0, -0.9, 0.0, 1.8, 0.0, -0.9, 0.0],
 		help="A list of joint angles, one for each of the 7 joints, J0...J6")
 	parser.add_argument(
-		"-s",  "--speed_ratio", type=float, default=0.1,
+		"-s",  "--speed_ratio", type=float, default=0.2,
 		help="A value between 0.001 (slow) and 1.0 (maximum joint velocity)")
 	parser.add_argument(
-		"-a",  "--accel_ratio", type=float, default=0.5,
+		"-a",  "--accel_ratio", type=float, default=0.05,
 		help="A value between 0.001 (slow) and 1.0 (maximum joint accel)")
 	parser.add_argument(
 		"-t", "--trajType", type=str, default='JOINT',
@@ -259,9 +217,9 @@ def main():
 										max_joint_accel=args.accel_ratio)
 		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
 
-		joint_angles = limb.joint_ordered_angles()
-		waypoint.set_joint_angles(joint_angles = joint_angles)
-		traj.append_waypoint(waypoint.to_msg())
+		# joint_angles = limb.joint_ordered_angles()
+		# waypoint.set_joint_angles(joint_angles = joint_angles)
+		# traj.append_waypoint(waypoint.to_msg())
 
 
 		# joint = ik_service_client(poses).values()[::-1]		# joint angles from J0 to J6
@@ -280,16 +238,67 @@ def main():
 		endpoint_state = limb.tip_state('right_hand')
 		current_pos = endpoint_state.pose.position 
 		dis = [final_pos[0]-current_pos.x, final_pos[1]-current_pos.y, final_pos[2]-current_pos.z]
-		uniform_motion = [current_pos.x + dis[0]/3, current_pos.y + dis[1]/3, current_pos.z + dis[2]/3]
-		soft_stop = [current_pos.x + 2*dis[0]/3, current_pos.y + 2*dis[1]/3, current_pos.z + 2*dis[2]/3]
+		uniform_motion = [current_pos.x + dis[0]/5, current_pos.y + dis[1]/5, current_pos.z + dis[2]/5]
+		soft_stop = [current_pos.x + 4*dis[0]/5, current_pos.y + 4*dis[1]/5, current_pos.z + 4*dis[2]/5]
 		
 		#######################################################################################
-		waypoint = path_planning(uniform_motion, args.orientation, 0.1, 0.1)
-		traj.append_waypoint(waypoint.to_msg())
-		waypoint = path_planning(soft_stop, args.orientation, 0.2, 0)
-		traj.append_waypoint(waypoint.to_msg())
-		waypoint = path_planning(final_pos, args.orientation, 0.1, 0.1)
-		traj.append_waypoint(waypoint.to_msg())
+		# waypoint = path_planning(uniform_motion, args.orientation, 0.25, 0.01)
+		# traj.append_waypoint(waypoint.to_msg())
+		# waypoint = path_planning(soft_stop, args.orientation, 0.25, 0)
+		# traj.append_waypoint(waypoint.to_msg())
+		# waypoint = path_planning(final_pos, args.orientation, 0.25, 0.01)
+
+		# # joint = path_planning(uniform_motion, args.orientation, 0.2, 0.1)	# joint angles from J0 to J6
+		# # waypoint.set_joint_angles(joint_angles = joint)
+		# # traj.append_waypoint(waypoint.to_msg())
+
+		# # joint = path_planning(soft_stop, args.orientation, 0.2, 0.1)	# joint angles from J0 to J6
+		# # waypoint.set_joint_angles(joint_angles = joint)
+		# # traj.append_waypoint(waypoint.to_msg())
+
+		# # joint = path_planning(final_pos, args.orientation, 0.2, 0.1)	# joint angles from J0 to J6
+		# # waypoint.set_joint_angles(joint_angles = joint)
+		# traj.append_waypoint(waypoint.to_msg())
+
+
+		###########open traj file
+		filename = 'traj8'
+		with open(filename, 'r') as f:
+			lines = f.readlines()
+		l = len(lines) - 1
+
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+										max_joint_accel=0.01)
+		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
+
+		for line in lines[1:int(floor(2*l/5))]:
+			print(line)
+			jnt_angles = [float(x) for x in line.rstrip().split(',')[1:8]]
+			waypoint.set_joint_angles(joint_angles = jnt_angles)
+			traj.append_waypoint(waypoint.to_msg())
+
+
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+										max_joint_accel=0)
+		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
+
+		for line in lines[int(floor(2*l/5)):int(floor(3*l/5))]:
+			print(line)
+			jnt_angles = [float(x) for x in line.rstrip().split(',')[1:8]]
+			waypoint.set_joint_angles(joint_angles = jnt_angles)
+			traj.append_waypoint(waypoint.to_msg())
+
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+										max_joint_accel=0.01)
+		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
+
+		for line in lines[int(floor(3*l/5)):]:
+			print(line)
+			jnt_angles = [float(x) for x in line.rstrip().split(',')[1:8]]
+			waypoint.set_joint_angles(joint_angles = jnt_angles)
+			traj.append_waypoint(waypoint.to_msg())
+
+
 
 		# set the interaction control options in the current configuration
 		interaction_options = InteractionOptions()

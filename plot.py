@@ -36,21 +36,57 @@ def plot(num=300):
     # plt.plot(times, target_velocities[:,2], label='Desired')
     # plt.xlabel("Time (t)")
     # plt.ylabel("Z Velocity")
-    plt.subplot(3,1,1)
-    plt.plot(time, pos_x, 'r-')
+    plt.subplot(3,2,1)
+    plt.plot(time, pos_x, 'g-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("X Position")
 
-    plt.subplot(3,1,2)
-    plt.plot(time, vel_x, 'r-')
+    # plt.subplot(3,3,2)
+    # plt.plot(time, vel_x, 'r-')
+    # plt.xlabel("Time (t)")
+    # plt.ylabel("X Velocity")
 
-    plt.subplot(3,1,3)
-    plt.plot(time, f_x, 'r-')
+    plt.subplot(3,2,2)
+    plt.plot(time, f_x, 'b-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("X Force")
+
+    plt.subplot(3,2,3)
+    plt.plot(time, pos_y, 'g-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("Y Position")
+
+    # plt.subplot(3,3,5)
+    # plt.plot(time, vel_y, 'r-')
+    # plt.xlabel("Time (t)")
+    # plt.ylabel("Y Velocity")
+
+    plt.subplot(3,2,4)
+    plt.plot(time, f_y, 'b-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("Y Force")
+
+    plt.subplot(3,2,5)
+    plt.plot(time, pos_z, 'g-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("Z Position")
+
+    # plt.subplot(3,3,8)
+    # plt.plot(time, vel_z, 'r-')
+    # plt.xlabel("Time (t)")
+    # plt.ylabel("Z Velocity")
+
+    plt.subplot(3,2,6)
+    plt.plot(time, f_z, 'b-')
+    plt.xlabel("Time (t)")
+    plt.ylabel("Z Force")
 
     plt.show()
 
 if __name__ == '__main__':
 	# with open('/home/cc/ee106b/sp19/class/ee106b-abm/ros_workspaces/final_project/src/r', 'r') as f:
 	# 	lines = f.readlines()
-	with open("record", "r") as f:
+	with open("record2", "r") as f:
 		lines = f.readlines()
 		print(lines)
 	time = []

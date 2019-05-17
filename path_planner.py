@@ -262,12 +262,12 @@ def main():
 
 
 		###########open traj file
-		filename = 'traj8'
+		filename = 'traj'
 		with open(filename, 'r') as f:
 			lines = f.readlines()
 		l = len(lines) - 1
 
-		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.5,
 										max_joint_accel=0.01)
 		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
 
@@ -278,7 +278,7 @@ def main():
 			traj.append_waypoint(waypoint.to_msg())
 
 
-		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.5,
 										max_joint_accel=0)
 		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
 
@@ -288,7 +288,7 @@ def main():
 			waypoint.set_joint_angles(joint_angles = jnt_angles)
 			traj.append_waypoint(waypoint.to_msg())
 
-		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.4,
+		wpt_opts = MotionWaypointOptions(max_joint_speed_ratio=0.5,
 										max_joint_accel=0.01)
 		waypoint = MotionWaypoint(options = wpt_opts.to_msg(), limb = limb)
 
